@@ -1,0 +1,75 @@
+{
+  "id": "pe", "name": "Windows PE executable (EXE, DLL, SYS)", "extensions": ["exe", "dll", "sys", "efi", "ocx", "scr", "cpl"],
+  "match": [[{ "offset": 0, "text": "MZ" }]],
+  "endian": "little",
+  "structs": {
+    "File": [
+      { "name": "dos_header", "type": "DosHeader" },
+      { "name": "pe", "type": "PeHeaders", "at": "dos_header.e_lfanew", "if": "dos_header.e_lfanew + 24 <= size() && u32le(dos_header.e_lfanew) == 0x4550" },
+      { "name": "note", "value": "'No PE header: an MS-DOS program'", "if": "!(dos_header.e_lfanew + 24 <= size() && u32le(dos_header.e_lfanew) == 0x4550)" }
+    ],
+    "DosHeader": [
+      { "name": "e_magic", "type": "char", "length": 2 },
+      { "name": "e_cblp", "type": "u16" }, { "name": "e_cp", "type": "u16" }, { "name": "e_crlc", "type": "u16" }, { "name": "e_cparhdr", "type": "u16" },
+      { "name": "e_minalloc", "type": "u16" }, { "name": "e_maxalloc", "type": "u16" }, { "name": "e_ss", "type": "u16" }, { "name": "e_sp", "type": "u16" },
+      { "name": "e_csum", "type": "u16" }, { "name": "e_ip", "type": "u16" }, { "name": "e_cs", "type": "u16" }, { "name": "e_lfarlc", "type": "u16" }, { "name": "e_ovno", "type": "u16" },
+      { "name": "e_res", "type": "u16", "count": 4 }, { "name": "e_oemid", "type": "u16" }, { "name": "e_oeminfo", "type": "u16" }, { "name": "e_res2", "type": "u16", "count": 10 },
+      { "name": "e_lfanew", "type": "u32", "format": "hex", "comment": "Offset of the PE header" }
+    ],
+    "PeHeaders": [
+      { "name": "signature", "type": "bytes", "length": 4, "expect": "50 45 00 00" },
+      { "name": "coff", "type": [
+        { "name": "machine", "type": "u16", "enum": { "0x14C": "x86", "0x8664": "x64", "0x1C0": "ARM", "0x1C4": "ARMv7 Thumb-2", "0xAA64": "ARM64", "0x200": "Itanium", "0x5064": "RISC-V 64", "0xEBC": "EFI byte code" } },
+        { "name": "number_of_sections", "type": "u16" },
+        { "name": "time_date_stamp", "type": "u32", "format": "unix" },
+        { "name": "pointer_to_symbol_table", "type": "u32", "format": "hex" }, { "name": "number_of_symbols", "type": "u32" },
+        { "name": "size_of_optional_header", "type": "u16" },
+        { "name": "characteristics", "type": "u16", "flags": { "0x1": "RELOCS_STRIPPED", "0x2": "EXECUTABLE", "0x20": "LARGE_ADDRESS_AWARE", "0x100": "32BIT", "0x200": "DEBUG_STRIPPED", "0x1000": "SYSTEM", "0x2000": "DLL" } }
+      ] },
+      { "name": "optional_header", "size": "coff.size_of_optional_header", "if": "coff.size_of_optional_header > 0", "type": { "switch": "u16le(pos())", "cases": { "0x10B": "Opt32", "0x20B": "Opt64" }, "default": "Raw" } },
+      { "name": "sections", "type": "Section", "count": "min(coff.number_of_sections, 96)" }
+    ],
+    "Raw": [ { "name": "bytes", "type": "bytes", "length": "end() - pos()" } ],
+    "Opt32": [
+      { "name": "magic", "type": "u16", "enum": { "0x10B": "PE32", "0x20B": "PE32+" } },
+      { "name": "linker_major", "type": "u8" }, { "name": "linker_minor", "type": "u8" },
+      { "name": "size_of_code", "type": "u32" }, { "name": "size_of_initialized_data", "type": "u32" }, { "name": "size_of_uninitialized_data", "type": "u32" },
+      { "name": "address_of_entry_point", "type": "u32", "format": "hex" }, { "name": "base_of_code", "type": "u32", "format": "hex" }, { "name": "base_of_data", "type": "u32", "format": "hex" },
+      { "name": "image_base", "type": "u32", "format": "hex" },
+      { "name": "common", "type": "OptCommon" },
+      { "name": "size_of_stack_reserve", "type": "u32" }, { "name": "size_of_stack_commit", "type": "u32" }, { "name": "size_of_heap_reserve", "type": "u32" }, { "name": "size_of_heap_commit", "type": "u32" },
+      { "name": "loader_flags", "type": "u32" }, { "name": "number_of_rva_and_sizes", "type": "u32" },
+      { "name": "data_directories", "type": "DataDir", "count": "min(number_of_rva_and_sizes, 16, (end() - pos()) // 8)" }
+    ],
+    "Opt64": [
+      { "name": "magic", "type": "u16", "enum": { "0x10B": "PE32", "0x20B": "PE32+" } },
+      { "name": "linker_major", "type": "u8" }, { "name": "linker_minor", "type": "u8" },
+      { "name": "size_of_code", "type": "u32" }, { "name": "size_of_initialized_data", "type": "u32" }, { "name": "size_of_uninitialized_data", "type": "u32" },
+      { "name": "address_of_entry_point", "type": "u32", "format": "hex" }, { "name": "base_of_code", "type": "u32", "format": "hex" },
+      { "name": "image_base", "type": "u64", "format": "hex" },
+      { "name": "common", "type": "OptCommon" },
+      { "name": "size_of_stack_reserve", "type": "u64" }, { "name": "size_of_stack_commit", "type": "u64" }, { "name": "size_of_heap_reserve", "type": "u64" }, { "name": "size_of_heap_commit", "type": "u64" },
+      { "name": "loader_flags", "type": "u32" }, { "name": "number_of_rva_and_sizes", "type": "u32" },
+      { "name": "data_directories", "type": "DataDir", "count": "min(number_of_rva_and_sizes, 16, (end() - pos()) // 8)" }
+    ],
+    "OptCommon": [
+      { "name": "section_alignment", "type": "u32", "format": "hex" }, { "name": "file_alignment", "type": "u32", "format": "hex" },
+      { "name": "os_major", "type": "u16" }, { "name": "os_minor", "type": "u16" }, { "name": "image_major", "type": "u16" }, { "name": "image_minor", "type": "u16" },
+      { "name": "subsystem_major", "type": "u16" }, { "name": "subsystem_minor", "type": "u16" }, { "name": "win32_version", "type": "u32" },
+      { "name": "size_of_image", "type": "u32" }, { "name": "size_of_headers", "type": "u32" }, { "name": "checksum", "type": "u32", "format": "hex" },
+      { "name": "subsystem", "type": "u16", "enum": { "1": "Native", "2": "Windows GUI", "3": "Windows console", "9": "Windows CE", "10": "EFI application", "11": "EFI boot driver", "12": "EFI runtime driver", "14": "Xbox", "16": "Windows boot" } },
+      { "name": "dll_characteristics", "type": "u16", "flags": { "0x20": "HIGH_ENTROPY_VA", "0x40": "DYNAMIC_BASE", "0x80": "FORCE_INTEGRITY", "0x100": "NX_COMPAT", "0x200": "NO_ISOLATION", "0x400": "NO_SEH", "0x800": "NO_BIND", "0x1000": "APPCONTAINER", "0x2000": "WDM_DRIVER", "0x4000": "GUARD_CF", "0x8000": "TERMINAL_SERVER_AWARE" } }
+    ],
+    "DataDir": { "label": "i == 0 ? 'Export' : i == 1 ? 'Import' : i == 2 ? 'Resource' : i == 3 ? 'Exception' : i == 4 ? 'Certificate' : i == 5 ? 'Base relocation' : i == 6 ? 'Debug' : i == 7 ? 'Architecture' : i == 8 ? 'Global pointer' : i == 9 ? 'TLS' : i == 10 ? 'Load config' : i == 11 ? 'Bound import' : i == 12 ? 'IAT' : i == 13 ? 'Delay import' : i == 14 ? 'CLR runtime (.NET)' : 'Reserved'", "fields": [
+      { "name": "virtual_address", "type": "u32", "format": "hex" }, { "name": "size_", "type": "u32" }
+    ] },
+    "Section": { "label": "name", "fields": [
+      { "name": "name", "type": "char", "length": 8 },
+      { "name": "virtual_size", "type": "u32" }, { "name": "virtual_address", "type": "u32", "format": "hex" },
+      { "name": "size_of_raw_data", "type": "u32" }, { "name": "pointer_to_raw_data", "type": "u32", "format": "hex" },
+      { "name": "pointer_to_relocations", "type": "u32", "format": "hex" }, { "name": "pointer_to_linenumbers", "type": "u32", "format": "hex" },
+      { "name": "number_of_relocations", "type": "u16" }, { "name": "number_of_linenumbers", "type": "u16" },
+      { "name": "characteristics", "type": "u32", "flags": { "0x20": "CODE", "0x40": "INITIALIZED_DATA", "0x80": "UNINITIALIZED_DATA", "0x2000000": "DISCARDABLE", "0x10000000": "SHARED", "0x20000000": "EXECUTE", "0x40000000": "READ", "0x80000000": "WRITE" } }
+    ] }
+  }
+}

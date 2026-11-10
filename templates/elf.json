@@ -1,0 +1,65 @@
+{
+  "id": "elf", "name": "ELF executable, object or shared library", "extensions": ["elf", "so", "o", "ko", "axf", "out"],
+  "match": [[{ "offset": 0, "hex": "7F 45 4C 46" }]],
+  "endian": "little",
+  "structs": {
+    "File": [
+      { "name": "e_ident", "type": "Ident" },
+      { "name": "header", "type": "Header" },
+      { "name": "program_headers", "type": { "switch": "e_ident.class", "cases": { "1": "Phdr32" }, "default": "Phdr64" }, "count": "min(header.e_phnum, 4096)", "at": "header.e_phoff", "peek": true, "if": "header.e_phnum > 0 && header.e_phoff < size()" },
+      { "name": "section_headers", "type": { "switch": "e_ident.class", "cases": { "1": "Shdr32" }, "default": "Shdr64" }, "count": "min(header.e_shnum, 65535)", "at": "header.e_shoff", "peek": true, "if": "header.e_shnum > 0 && header.e_shoff < size()" }
+    ],
+    "Ident": [
+      { "name": "magic", "type": "bytes", "length": 4, "expect": "7F 45 4C 46" },
+      { "name": "class", "type": "u8", "enum": { "1": "32-bit", "2": "64-bit" } },
+      { "name": "data", "type": "u8", "enum": { "1": "Little-endian", "2": "Big-endian" } },
+      { "name": "version", "type": "u8" },
+      { "name": "os_abi", "type": "u8", "enum": { "0": "System V", "3": "Linux", "6": "Solaris", "9": "FreeBSD", "12": "OpenBSD", "97": "ARM", "255": "Standalone" } },
+      { "name": "abi_version", "type": "u8" },
+      { "name": "padding", "type": "bytes", "length": 7 }
+    ],
+    "Header": { "endian": "e_ident.data == 2 ? 'big' : 'little'", "fields": [
+      { "name": "e_type", "type": "u16", "enum": { "0": "None", "1": "Relocatable", "2": "Executable", "3": "Shared object / PIE", "4": "Core dump" } },
+      { "name": "e_machine", "type": "u16", "enum": "Machine" },
+      { "name": "e_version", "type": "u32" },
+      { "name": "e_entry", "type": { "switch": "e_ident.class", "cases": { "1": "u32" }, "default": "u64" }, "format": "hex" },
+      { "name": "e_phoff", "type": { "switch": "e_ident.class", "cases": { "1": "u32" }, "default": "u64" }, "format": "hex" },
+      { "name": "e_shoff", "type": { "switch": "e_ident.class", "cases": { "1": "u32" }, "default": "u64" }, "format": "hex" },
+      { "name": "e_flags", "type": "u32", "format": "hex" },
+      { "name": "e_ehsize", "type": "u16" }, { "name": "e_phentsize", "type": "u16" }, { "name": "e_phnum", "type": "u16" },
+      { "name": "e_shentsize", "type": "u16" }, { "name": "e_shnum", "type": "u16" }, { "name": "e_shstrndx", "type": "u16" },
+      { "name": "shstrtab_offset", "hidden": true, "value": "e_shstrndx < e_shnum && e_shoff + (e_shstrndx + 1) * e_shentsize <= size() ? u32(e_shoff + e_shstrndx * e_shentsize + (e_ident.class == 1 ? 16 : 24)) : 0" }
+    ] },
+    "Phdr32": { "endian": "e_ident.data == 2 ? 'big' : 'little'", "label": "p_type", "fields": [
+      { "name": "p_type", "type": "u32", "enum": "PType" }, { "name": "p_offset", "type": "u32", "format": "hex" },
+      { "name": "p_vaddr", "type": "u32", "format": "hex" }, { "name": "p_paddr", "type": "u32", "format": "hex" },
+      { "name": "p_filesz", "type": "u32" }, { "name": "p_memsz", "type": "u32" },
+      { "name": "p_flags", "type": "u32", "flags": "PFlags" }, { "name": "p_align", "type": "u32", "format": "hex" }
+    ] },
+    "Phdr64": { "endian": "e_ident.data == 2 ? 'big' : 'little'", "label": "p_type", "fields": [
+      { "name": "p_type", "type": "u32", "enum": "PType" }, { "name": "p_flags", "type": "u32", "flags": "PFlags" },
+      { "name": "p_offset", "type": "u64", "format": "hex" }, { "name": "p_vaddr", "type": "u64", "format": "hex" }, { "name": "p_paddr", "type": "u64", "format": "hex" },
+      { "name": "p_filesz", "type": "u64" }, { "name": "p_memsz", "type": "u64" }, { "name": "p_align", "type": "u64", "format": "hex" }
+    ] },
+    "Shdr32": { "endian": "e_ident.data == 2 ? 'big' : 'little'", "label": "defined(name) ? name : ''", "fields": [
+      { "name": "sh_name", "type": "u32" },
+      { "name": "name", "type": "zstring", "length": 256, "encoding": "latin1", "at": "header.shstrtab_offset + sh_name", "peek": true, "if": "header.shstrtab_offset && header.shstrtab_offset + sh_name < size()" },
+      { "name": "sh_type", "type": "u32", "enum": "ShType" }, { "name": "sh_flags", "type": "u32", "flags": "ShFlags" },
+      { "name": "sh_addr", "type": "u32", "format": "hex" }, { "name": "sh_offset", "type": "u32", "format": "hex" }, { "name": "sh_size", "type": "u32" },
+      { "name": "sh_link", "type": "u32" }, { "name": "sh_info", "type": "u32" }, { "name": "sh_addralign", "type": "u32" }, { "name": "sh_entsize", "type": "u32" }
+    ] },
+    "Shdr64": { "endian": "e_ident.data == 2 ? 'big' : 'little'", "label": "defined(name) ? name : ''", "fields": [
+      { "name": "sh_name", "type": "u32" },
+      { "name": "name", "type": "zstring", "length": 256, "encoding": "latin1", "at": "header.shstrtab_offset + sh_name", "peek": true, "if": "header.shstrtab_offset && header.shstrtab_offset + sh_name < size()" },
+      { "name": "sh_type", "type": "u32", "enum": "ShType" }, { "name": "sh_flags", "type": "u64", "flags": "ShFlags" },
+      { "name": "sh_addr", "type": "u64", "format": "hex" }, { "name": "sh_offset", "type": "u64", "format": "hex" }, { "name": "sh_size", "type": "u64" },
+      { "name": "sh_link", "type": "u32" }, { "name": "sh_info", "type": "u32" }, { "name": "sh_addralign", "type": "u64" }, { "name": "sh_entsize", "type": "u64" }
+    ] }
+  },
+  "enums": {
+    "Machine": { "0": "None", "3": "x86", "8": "MIPS", "20": "PowerPC", "21": "PowerPC 64", "40": "ARM", "42": "SuperH", "50": "IA-64", "62": "x86-64", "183": "AArch64", "243": "RISC-V", "247": "BPF", "258": "LoongArch" },
+    "PType": { "0": "NULL", "1": "LOAD", "2": "DYNAMIC", "3": "INTERP", "4": "NOTE", "5": "SHLIB", "6": "PHDR", "7": "TLS", "0x6474E550": "GNU_EH_FRAME", "0x6474E551": "GNU_STACK", "0x6474E552": "GNU_RELRO", "0x6474E553": "GNU_PROPERTY" },
+    "ShType": { "0": "NULL", "1": "PROGBITS", "2": "SYMTAB", "3": "STRTAB", "4": "RELA", "5": "HASH", "6": "DYNAMIC", "7": "NOTE", "8": "NOBITS", "9": "REL", "11": "DYNSYM", "14": "INIT_ARRAY", "15": "FINI_ARRAY", "0x6FFFFFF6": "GNU_HASH", "0x6FFFFFFE": "VERNEED", "0x6FFFFFFF": "VERSYM" }
+  },
+  "flags": { "PFlags": { "0x1": "X", "0x2": "W", "0x4": "R" }, "ShFlags": { "0x1": "WRITE", "0x2": "ALLOC", "0x4": "EXECINSTR", "0x10": "MERGE", "0x20": "STRINGS", "0x40": "INFO_LINK", "0x400": "TLS" } }
+}

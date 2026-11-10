@@ -1,0 +1,317 @@
+{
+  "name": "zovo-elf-pe-viewer",
+  "displayName": "ELF Viewer & PE Viewer (DLL, EXE, Mach-O Headers, Sections, Imports)",
+  "description": "ELF viewer, PE viewer and DLL viewer for VS Code: open .so, .o, .exe, .dll, .sys and Mach-O .dylib files and read headers, sections, segments, imports, exports and symbols, with a hex view. Also an EXE viewer and Mach-O viewer for universal binaries. Read-only, no network, fast on 500 MB files.",
+  "version": "0.1.0",
+  "publisher": "zovo",
+  "license": "MIT",
+  "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#1B2A4A",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/theluckystrike/elf-pe-viewer-vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/theluckystrike/elf-pe-viewer-vscode/issues"
+  },
+  "homepage": "https://github.com/theluckystrike/elf-pe-viewer-vscode#readme",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Visualization",
+    "Programming Languages",
+    "Debuggers",
+    "Other"
+  ],
+  "keywords": [
+    "elf viewer",
+    "pe viewer",
+    "dll viewer",
+    "exe viewer",
+    "mach-o viewer",
+    "elf",
+    "pe",
+    "dll",
+    "exe",
+    "mach-o",
+    "dylib",
+    "so",
+    "readelf",
+    "objdump",
+    "dumpbin",
+    "otool",
+    "imports",
+    "exports",
+    "symbols",
+    "reverse engineering",
+    "binary",
+    "pe explorer",
+    "elf header",
+    "dll structure",
+    "portable executable"
+  ],
+  "main": "./src/extension.js",
+  "activationEvents": [],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    },
+    "virtualWorkspaces": true
+  },
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "elfPeViewer.binary",
+        "displayName": "ELF & PE Viewer",
+        "selector": [
+          {
+            "filenamePattern": "*.exe"
+          },
+          {
+            "filenamePattern": "*.dll"
+          },
+          {
+            "filenamePattern": "*.sys"
+          },
+          {
+            "filenamePattern": "*.efi"
+          },
+          {
+            "filenamePattern": "*.ocx"
+          },
+          {
+            "filenamePattern": "*.cpl"
+          },
+          {
+            "filenamePattern": "*.scr"
+          },
+          {
+            "filenamePattern": "*.drv"
+          },
+          {
+            "filenamePattern": "*.pyd"
+          },
+          {
+            "filenamePattern": "*.mui"
+          },
+          {
+            "filenamePattern": "*.so"
+          },
+          {
+            "filenamePattern": "*.so.*"
+          },
+          {
+            "filenamePattern": "*.dylib"
+          },
+          {
+            "filenamePattern": "*.elf"
+          },
+          {
+            "filenamePattern": "*.axf"
+          },
+          {
+            "filenamePattern": "*.ko"
+          },
+          {
+            "filenamePattern": "*.prx"
+          }
+        ],
+        "priority": "default"
+      },
+      {
+        "viewType": "elfPeViewer.any",
+        "displayName": "ELF & PE Viewer (any file)",
+        "selector": [
+          {
+            "filenamePattern": "*"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
+    "commands": [
+      {
+        "command": "elfPeViewer.open",
+        "title": "Open in ELF & PE Viewer",
+        "category": "ELF & PE Viewer",
+        "icon": "$(file-binary)"
+      },
+      {
+        "command": "elfPeViewer.openSample",
+        "title": "Open a sample ELF file",
+        "category": "ELF & PE Viewer"
+      },
+      {
+        "command": "elfPeViewer.openWalkthrough",
+        "title": "Get started",
+        "category": "ELF & PE Viewer"
+      },
+      {
+        "command": "elfPeViewer.exportJson",
+        "title": "Export structure as JSON (Pro)",
+        "category": "ELF & PE Viewer"
+      },
+      {
+        "command": "elfPeViewer.exportC",
+        "title": "Export structure as C header (Pro)",
+        "category": "ELF & PE Viewer"
+      },
+      {
+        "command": "elfPeViewer.compare",
+        "title": "Compare two binaries (Pro)",
+        "category": "ELF & PE Viewer"
+      },
+      {
+        "command": "elfPeViewer.findInFolder",
+        "title": "Find a symbol or import in a folder (Pro)",
+        "category": "ELF & PE Viewer"
+      },
+      {
+        "command": "elfPeViewer.supportDeveloper",
+        "title": "Support the developer",
+        "category": "ELF & PE Viewer"
+      },
+      {
+        "command": "elfPeViewer.moreViewers",
+        "title": "More free viewers",
+        "category": "ELF & PE Viewer"
+      },
+      {
+        "command": "elfPeViewer.getPro",
+        "title": "Get Zovo Pro (USD 19 once, all 22 Zovo extensions)",
+        "category": "Zovo Pro"
+      },
+      {
+        "command": "elfPeViewer.payWithPayPal",
+        "title": "Pay for Zovo Pro with PayPal (USD 19, team of 5 USD 59)",
+        "category": "Zovo Pro"
+      },
+      {
+        "command": "elfPeViewer.unlockWithSponsors",
+        "title": "I already paid: unlock with GitHub Sponsors",
+        "category": "Zovo Pro"
+      },
+      {
+        "command": "elfPeViewer.enterLicenseKey",
+        "title": "Enter Zovo Pro license key",
+        "category": "Zovo Pro"
+      },
+      {
+        "command": "elfPeViewer.removeLicense",
+        "title": "Remove Zovo Pro from this editor",
+        "category": "Zovo Pro"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "elfPeViewer.open",
+          "when": "!explorerResourceIsFolder",
+          "group": "navigation@40"
+        },
+        {
+          "command": "elfPeViewer.compare",
+          "when": "!explorerResourceIsFolder && config.elfPeViewer.showProTools",
+          "group": "7_modification@40"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "elfPeViewer.openSample",
+          "when": "true"
+        },
+        {
+          "command": "elfPeViewer.exportJson",
+          "when": "config.elfPeViewer.showProTools"
+        },
+        {
+          "command": "elfPeViewer.exportC",
+          "when": "config.elfPeViewer.showProTools"
+        },
+        {
+          "command": "elfPeViewer.compare",
+          "when": "config.elfPeViewer.showProTools"
+        },
+        {
+          "command": "elfPeViewer.findInFolder",
+          "when": "config.elfPeViewer.showProTools"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "ELF & PE Viewer",
+      "properties": {
+        "elfPeViewer.showProTools": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the Export, Compare and Find in folder buttons (Zovo Pro tools, 3 free tries each). Turn off to hide them."
+        },
+        "elfPeViewer.showSupportLinks": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the small Rate, More free viewers and support links at the bottom of the viewer."
+        },
+        "elfPeViewer.askForRating": {
+          "type": "boolean",
+          "default": true,
+          "description": "Ask once, after a few days of use, whether you want to rate the extension. Never after an error."
+        }
+      }
+    },
+    "walkthroughs": [
+      {
+        "id": "elfPeViewer.start",
+        "title": "ELF Viewer & PE Viewer",
+        "description": "Read the structure of ELF, PE and Mach-O binaries without leaving VS Code.",
+        "steps": [
+          {
+            "id": "open",
+            "title": "Open a binary",
+            "description": "Click any .so, .exe, .dll, .sys or .dylib file in the Explorer: it opens in the viewer. For files without an extension (Linux and macOS executables), right-click and pick Open in ELF & PE Viewer.\n[Open a sample ELF file](command:elfPeViewer.openSample)\n[Open a file...](command:elfPeViewer.open)",
+            "media": {
+              "markdown": "walkthrough/open.md"
+            }
+          },
+          {
+            "id": "tables",
+            "title": "Imports, exports and symbols",
+            "description": "Each tab is a table you can filter, sort and copy. Imports show the library each function comes from (DLL, shared object or dylib).\n[Open a sample DLL](command:elfPeViewer.openSample?%22pe%22)",
+            "media": {
+              "markdown": "walkthrough/tables.md"
+            }
+          },
+          {
+            "id": "hex",
+            "title": "Bytes behind every row",
+            "description": "The bytes link on a row, or the offset next to a header field, opens the Hex tab with those bytes marked. Large files load only the rows you look at.\n[Open a sample Mach-O library](command:elfPeViewer.openSample?%22macho%22)",
+            "media": {
+              "markdown": "walkthrough/hex.md"
+            }
+          },
+          {
+            "id": "zovo-related",
+            "title": "Files that often come with ELF and PE binaries",
+            "description": "If your project also has binary files or VCD waveforms, these free Zovo extensions open them. A link opens the extension page, and you choose there whether to install it.\n[Hex Viewer](command:extension.open?%5B%22zovo.zovo-hex-viewer%22%5D)\n[VCD Waveform Viewer](command:extension.open?%5B%22zovo.zovo-vcd-waveform-viewer%22%5D)",
+            "media": {
+              "markdown": "walkthrough/related.md"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "test": "node scripts/test.js",
+    "samples": "node scripts/make_samples.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "~1.90.0"
+  },
+  "sponsor": {
+    "url": "https://github.com/sponsors/theluckystrike/sponsorships?tier_id=679878"
+  }
+}

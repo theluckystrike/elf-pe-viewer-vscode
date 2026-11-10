@@ -1,0 +1,9 @@
+test/**
+scripts/**
+.github/**
+icon.svg
+node_modules/**
+dist/**
+*.vsix
+.gitignore
+.vscodeignore

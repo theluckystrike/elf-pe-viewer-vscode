@@ -1,0 +1,87 @@
+{
+  "id": "macho", "name": "Mach-O executable or library (macOS, iOS), also universal binaries", "extensions": ["dylib", "bundle", "o", "macho"],
+  "match": [[{ "offset": 0, "hex": "CF FA ED FE" }], [{ "offset": 0, "hex": "CE FA ED FE" }], [{ "offset": 0, "hex": "FE ED FA CF" }], [{ "offset": 0, "hex": "FE ED FA CE" }],
+            [{ "offset": 0, "hex": "CA FE BA BE" }, { "offset": 4, "type": "u32", "endian": "big", "min": 1, "max": 30 }]],
+  "endian": "big",
+  "structs": {
+    "File": [ { "name": "macho", "type": "MachO" } ],
+    "MachO": [
+      { "name": "magic", "type": "u32", "format": "hex", "endian": "big", "enum": { "0xFEEDFACE": "32-bit, big-endian", "0xFEEDFACF": "64-bit, big-endian", "0xCEFAEDFE": "32-bit, little-endian", "0xCFFAEDFE": "64-bit, little-endian", "0xCAFEBABE": "Universal (fat) binary" } },
+      { "name": "fat", "type": "Fat", "if": "magic == 0xCAFEBABE" },
+      { "name": "header", "type": "Thin", "if": "magic != 0xCAFEBABE" }
+    ],
+    "Fat": [
+      { "name": "arch_count", "type": "u32" },
+      { "name": "archs", "type": "FatArch", "count": "min(arch_count, 30)" },
+      { "name": "slices", "type": "MachO", "count": "len(archs)", "elementAt": "archs[i].offset" }
+    ],
+    "FatArch": { "label": "cputype", "fields": [ { "name": "cputype", "type": "i32", "enum": "Cpu" }, { "name": "cpusubtype", "type": "i32", "format": "hex" }, { "name": "offset", "type": "u32", "format": "hex" }, { "name": "size_", "type": "u32" }, { "name": "align", "type": "u32", "comment": "Power of 2" } ] },
+    "Thin": { "endian": "magic == 0xCEFAEDFE || magic == 0xCFFAEDFE ? 'little' : 'big'", "fields": [
+      { "name": "is64", "value": "magic == 0xCFFAEDFE || magic == 0xFEEDFACF", "hidden": true },
+      { "name": "cputype", "type": "i32", "enum": "Cpu" }, { "name": "cpusubtype", "type": "i32", "format": "hex" },
+      { "name": "filetype", "type": "u32", "enum": { "1": "Object", "2": "Executable", "3": "Fixed VM library", "4": "Core", "5": "Preloaded", "6": "Dynamic library", "7": "Dynamic linker", "8": "Bundle", "9": "Dylib stub", "10": "dSYM companion", "11": "Kext bundle", "12": "Fileset" } },
+      { "name": "ncmds", "type": "u32" }, { "name": "sizeofcmds", "type": "u32" },
+      { "name": "flags", "type": "u32", "flags": { "0x1": "NOUNDEFS", "0x4": "DYLDLINK", "0x80": "TWOLEVEL", "0x200000": "PIE", "0x800000": "HAS_TLV_DESCRIPTORS", "0x2000000": "APP_EXTENSION_SAFE" } },
+      { "name": "reserved", "type": "u32", "if": "is64" },
+      { "name": "load_commands", "type": "LoadCommand", "count": "min(ncmds, 10000)" }
+    ] },
+    "LoadCommand": { "label": "cmd", "fields": [
+      { "name": "cmd", "type": "u32", "enum": "Lc" },
+      { "name": "cmdsize", "type": "u32" },
+      { "name": "body", "size": "max(0, cmdsize - 8)", "type": { "switch": "cmd", "cases": { "0x19": "Segment64", "0x1": "Segment32", "0xC": "Dylib", "0xD": "Dylib", "0x80000018": "Dylib", "0x8000001F": "Dylib", "0x80000023": "Dylib", "0xE": "Dylinker", "0xF": "Dylinker", "0x1B": "Uuid", "0x80000028": "Main", "0x32": "BuildVersion", "0x2": "Symtab", "0x1D": "LinkeditData", "0x26": "LinkeditData", "0x29": "LinkeditData", "0x80000033": "LinkeditData", "0x80000034": "LinkeditData", "0x8000001C": "Rpath" }, "default": "Raw" } }
+    ] },
+    "Raw": [ { "name": "bytes", "type": "bytes", "length": "end() - pos()" } ],
+    "Segment64": { "label": "segname", "fields": [
+      { "name": "segname", "type": "char", "length": 16 },
+      { "name": "vmaddr", "type": "u64", "format": "hex" }, { "name": "vmsize", "type": "u64", "format": "hex" },
+      { "name": "fileoff", "type": "u64", "format": "hex" }, { "name": "filesize", "type": "u64" },
+      { "name": "maxprot", "type": "u32", "flags": "Prot" }, { "name": "initprot", "type": "u32", "flags": "Prot" },
+      { "name": "nsects", "type": "u32" }, { "name": "flags", "type": "u32", "format": "hex" },
+      { "name": "sections", "type": "Section64", "count": "min(nsects, (end() - pos()) // 80)" }
+    ] },
+    "Section64": { "label": "sectname", "fields": [
+      { "name": "sectname", "type": "char", "length": 16 }, { "name": "segname", "type": "char", "length": 16 },
+      { "name": "addr", "type": "u64", "format": "hex" }, { "name": "size_", "type": "u64" },
+      { "name": "offset", "type": "u32", "format": "hex" }, { "name": "align", "type": "u32" },
+      { "name": "reloff", "type": "u32", "format": "hex" }, { "name": "nreloc", "type": "u32" },
+      { "name": "flags", "type": "u32", "format": "hex" }, { "name": "reserved1", "type": "u32" }, { "name": "reserved2", "type": "u32" }, { "name": "reserved3", "type": "u32" }
+    ] },
+    "Segment32": { "label": "segname", "fields": [
+      { "name": "segname", "type": "char", "length": 16 },
+      { "name": "vmaddr", "type": "u32", "format": "hex" }, { "name": "vmsize", "type": "u32", "format": "hex" },
+      { "name": "fileoff", "type": "u32", "format": "hex" }, { "name": "filesize", "type": "u32" },
+      { "name": "maxprot", "type": "u32", "flags": "Prot" }, { "name": "initprot", "type": "u32", "flags": "Prot" },
+      { "name": "nsects", "type": "u32" }, { "name": "flags", "type": "u32", "format": "hex" },
+      { "name": "sections", "type": "Section32", "count": "min(nsects, (end() - pos()) // 68)" }
+    ] },
+    "Section32": { "label": "sectname", "fields": [
+      { "name": "sectname", "type": "char", "length": 16 }, { "name": "segname", "type": "char", "length": 16 },
+      { "name": "addr", "type": "u32", "format": "hex" }, { "name": "size_", "type": "u32" },
+      { "name": "offset", "type": "u32", "format": "hex" }, { "name": "align", "type": "u32" },
+      { "name": "reloff", "type": "u32", "format": "hex" }, { "name": "nreloc", "type": "u32" },
+      { "name": "flags", "type": "u32", "format": "hex" }, { "name": "reserved1", "type": "u32" }, { "name": "reserved2", "type": "u32" }
+    ] },
+    "Dylib": { "label": "name", "fields": [
+      { "name": "name_offset", "type": "u32" }, { "name": "timestamp", "type": "u32" },
+      { "name": "current_version", "type": "u32", "format": "hex", "comment": "xxxx.yy.zz" }, { "name": "compatibility_version", "type": "u32", "format": "hex" },
+      { "name": "name", "type": "zstring", "length": "end() - parent.offset - name_offset", "at": "parent.offset + name_offset", "peek": true }
+    ] },
+    "Dylinker": { "label": "name", "fields": [ { "name": "name_offset", "type": "u32" }, { "name": "name", "type": "zstring", "length": "end() - parent.offset - name_offset", "at": "parent.offset + name_offset", "peek": true } ] },
+    "Rpath": { "label": "path", "fields": [ { "name": "path_offset", "type": "u32" }, { "name": "path", "type": "zstring", "length": "end() - parent.offset - path_offset", "at": "parent.offset + path_offset", "peek": true } ] },
+    "Uuid": [ { "name": "uuid", "type": "bytes", "length": 16 } ],
+    "Main": [ { "name": "entryoff", "type": "u64", "format": "hex" }, { "name": "stacksize", "type": "u64" } ],
+    "BuildVersion": [
+      { "name": "platform", "type": "u32", "enum": { "1": "macOS", "2": "iOS", "3": "tvOS", "4": "watchOS", "5": "bridgeOS", "6": "Mac Catalyst", "7": "iOS simulator", "8": "tvOS simulator", "9": "watchOS simulator", "11": "visionOS", "12": "visionOS simulator" } },
+      { "name": "minos", "type": "u32", "format": "hex", "comment": "xxxx.yy.zz: 0x000E0000 is 14.0" }, { "name": "sdk", "type": "u32", "format": "hex" },
+      { "name": "ntools", "type": "u32" },
+      { "name": "tools", "type": [ { "name": "tool", "type": "u32", "enum": { "1": "clang", "2": "swift", "3": "ld", "4": "lld" } }, { "name": "version", "type": "u32", "format": "hex" } ], "count": "min(ntools, (end() - pos()) // 8)" }
+    ],
+    "Symtab": [ { "name": "symoff", "type": "u32", "format": "hex" }, { "name": "nsyms", "type": "u32" }, { "name": "stroff", "type": "u32", "format": "hex" }, { "name": "strsize", "type": "u32" } ],
+    "LinkeditData": [ { "name": "dataoff", "type": "u32", "format": "hex" }, { "name": "datasize", "type": "u32" } ]
+  },
+  "enums": {
+    "Cpu": { "7": "x86", "0x1000007": "x86-64", "12": "ARM", "0x100000C": "ARM64", "0x200000C": "ARM64_32", "18": "PowerPC", "0x1000012": "PowerPC 64" },
+    "Lc": { "0x1": "LC_SEGMENT", "0x2": "LC_SYMTAB", "0xB": "LC_DYSYMTAB", "0xC": "LC_LOAD_DYLIB", "0xD": "LC_ID_DYLIB", "0xE": "LC_LOAD_DYLINKER", "0xF": "LC_ID_DYLINKER", "0x19": "LC_SEGMENT_64", "0x1B": "LC_UUID", "0x1D": "LC_CODE_SIGNATURE", "0x1E": "LC_SEGMENT_SPLIT_INFO", "0x21": "LC_ENCRYPTION_INFO", "0x22": "LC_DYLD_INFO", "0x80000022": "LC_DYLD_INFO_ONLY", "0x24": "LC_VERSION_MIN_MACOSX", "0x25": "LC_VERSION_MIN_IPHONEOS", "0x26": "LC_FUNCTION_STARTS", "0x29": "LC_DATA_IN_CODE", "0x2A": "LC_SOURCE_VERSION", "0x2C": "LC_ENCRYPTION_INFO_64", "0x32": "LC_BUILD_VERSION", "0x80000018": "LC_LOAD_WEAK_DYLIB", "0x8000001C": "LC_RPATH", "0x8000001F": "LC_REEXPORT_DYLIB", "0x80000023": "LC_LOAD_UPWARD_DYLIB", "0x80000028": "LC_MAIN", "0x80000033": "LC_DYLD_EXPORTS_TRIE", "0x80000034": "LC_DYLD_CHAINED_FIXUPS" }
+  },
+  "flags": { "Prot": { "0x1": "R", "0x2": "W", "0x4": "X" } }
+}
